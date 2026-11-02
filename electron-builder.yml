@@ -1,0 +1,95 @@
+$schema: "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json"
+
+productName: "UV5R Studio"
+appId: "com.uv5r-studio.app"
+copyright: "Copyright © 2026 Vivien Roggero LLC."
+
+artifactName: "${productName}-${version}-${arch}.${ext}"
+compression: "normal"
+removePackageScripts: true
+npmRebuild: false
+
+directories:
+  output: "release"
+  buildResources: "build"
+
+# Ship only the Electron runtime and application files. This allowlist prevents
+# credentials, source-control metadata, tests, documentation, and CI files from
+# being copied into the packaged application.
+files:
+  - "main.js"
+  - "preload.js"
+  - "src/**/*"
+  - "package.json"
+  - "!**/.env"
+  - "!**/.env.*"
+  - "!**/*.{p8,p12,pfx,pem,key,cer,crt}"
+
+asar:
+  smartUnpack: true
+
+mac:
+  category: "public.app-category.utilities"
+  icon: "build/icon.icns"
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: "build/entitlements.mac.plist"
+  entitlementsInherit: "build/entitlements.mac.plist"
+  notarize: true
+  target:
+    - target: "dmg"
+      arch:
+        - "arm64"
+        - "x64"
+  extendInfo:
+    CFBundleName: "UV5R Studio"
+    CFBundleDisplayName: "UV5R Studio"
+    NSHumanReadableCopyright: "Copyright © 2026 Vviien Rogggero LLC."
+    NSMicrophoneUsageDescription: "UV5R Studio listens to radio audio to decode voice, Morse, packet, DTMF and images, and records activity."
+
+dmg:
+  title: "UV5R Studio ${version}"
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: "link"
+      path: "/Applications"
+  window:
+    width: 540
+    height: 380
+
+win:
+  icon: "build/icon.png"
+  publisherName: "UV5R Studio Community"
+  target:
+    - target: "nsis"
+      arch:
+        - "x64"
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: "UV5R Studio"
+  uninstallDisplayName: "Uninstall UV5R Studio"
+  runAfterFinish: true
+
+linux:
+  icon: "build/icon.png"
+  category: "Utility"
+  synopsis: "Program, monitor, decode and transmit with a Baofeng UV-5R"
+  description: "Desktop radio programming and signal decoding tools for the Baofeng UV-5R."
+  maintainer: "Vivien Roggero LLC."
+  vendor: "Vivien Roggero LLC."
+  target:
+    - target: "AppImage"
+      arch:
+        - "x64"
+    - target: "deb"
+      arch:
+        - "x64"

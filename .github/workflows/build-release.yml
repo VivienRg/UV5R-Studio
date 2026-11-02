@@ -1,0 +1,163 @@
+name: Build desktop releases
+
+on:
+  push:
+    branches:
+      - "release"
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate release source
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate version tag
+        if: github.ref_type == 'tag'
+        shell: bash
+        run: |
+          expected_tag="v$(node -p 'require("./package.json").version')"
+          if [[ "$GITHUB_REF_NAME" != "$expected_tag" ]]; then
+            echo "Tag $GITHUB_REF_NAME does not match package.json version $expected_tag" >&2
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/release; then
+            echo "Tag $GITHUB_REF_NAME must point to a commit on the release branch" >&2
+            exit 1
+          fi
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.12.0
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+  macos:
+    name: macOS — signed and notarized
+    needs: validate
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.12.0
+          cache: npm
+      - run: npm ci
+      - name: Build, sign, and notarize
+        run: npm run dist:mac -- -c.forceCodeSigning=true -c.appId="${APP_BUNDLE_ID:-com.uv5r-studio.app}"
+        env:
+          APP_BUNDLE_ID: ${{ vars.APP_BUNDLE_ID }}
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: UV5R-Studio-macOS-${{ github.ref_name }}
+          path: |
+            release/*.dmg
+            release/*.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  windows:
+    name: Windows — self-signed
+    needs: validate
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.12.0
+          cache: npm
+      - run: npm ci
+      - name: Build self-signed Windows installer
+        run: npm run dist:win -- -c.forceCodeSigning=true
+        env:
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: UV5R-Studio-Windows-${{ github.ref_name }}
+          path: release/*.exe
+          if-no-files-found: error
+          retention-days: 14
+
+  linux:
+    name: Linux
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.12.0
+          cache: npm
+      - run: npm ci
+      - name: Build AppImage and Debian package
+        run: npm run dist:linux
+      - uses: actions/upload-artifact@v4
+        with:
+          name: UV5R-Studio-Linux-${{ github.ref_name }}
+          path: |
+            release/*.AppImage
+            release/*.deb
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    name: Publish GitHub Release
+    if: github.ref_type == 'tag'
+    needs:
+      - macos
+      - windows
+      - linux
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download platform artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+          merge-multiple: true
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          cd release-artifacts
+          sha256sum * > SHA256SUMS.txt
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" * --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" * --verify-tag --generate-notes --title "UV5R Studio $GITHUB_REF_NAME"
+          fi

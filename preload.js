@@ -1,0 +1,25 @@
+const { contextBridge, ipcRenderer } = require('electron');
+contextBridge.exposeInMainWorld('api', {
+  onSerialPorts: cb => ipcRenderer.on('serial-ports', (e, list) => cb(list)),
+  choosePort: id => ipcRenderer.send('serial-port-chosen', id),
+  micAccess: () => ipcRenderer.invoke('mic-access'),
+  openText: f => ipcRenderer.invoke('open-text', f),
+  saveText: (n, t, f) => ipcRenderer.invoke('save-text', n, t, f),
+  openBinary: f => ipcRenderer.invoke('open-binary', f),
+  saveBinary: (n, d, f) => ipcRenderer.invoke('save-binary', n, d, f),
+  autoBackup: d => ipcRenderer.invoke('auto-backup', d),
+  saveClip: (n, d) => ipcRenderer.invoke('save-clip', n, d),
+  loadLog: () => ipcRenderer.invoke('load-log'),
+  saveLog: e => ipcRenderer.invoke('save-log', e),
+  openDataFolder: () => ipcRenderer.invoke('open-data-folder'),
+  dataDir: () => ipcRenderer.invoke('data-dir'),
+  saveImage: (n, d) => ipcRenderer.invoke('save-image', n, d),
+  listImages: () => ipcRenderer.invoke('list-images'),
+  keySet: k => ipcRenderer.invoke('key-set', k),
+  keyHas: () => ipcRenderer.invoke('key-has'),
+  translate: o => ipcRenderer.invoke('translate', o),
+  ttsVoices: () => ipcRenderer.invoke('tts-voices'),
+  ttsRender: o => ipcRenderer.invoke('tts-render', o),
+  sigCheck: () => ipcRenderer.invoke('sig-check'),
+  platform: process.platform
+});

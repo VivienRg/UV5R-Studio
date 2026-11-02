@@ -1,0 +1,52 @@
+name: Feature request
+description: Propose an improvement to UV5R Studio
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What operator or developer problem would this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the desired behavior and interface.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Describe workarounds or other approaches you considered.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Radio programming
+        - Receiving or decoding
+        - Transmission
+        - Conversation or translation
+        - User interface
+        - Packaging or distribution
+        - Developer tooling
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: safety
+    attributes:
+      label: Radio, privacy, or security impact
+      description: Explain any effect on transmission, licensing, credentials, recordings, or network access.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and pull requests for this request.
+          required: true

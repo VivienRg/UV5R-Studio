@@ -1,0 +1,63 @@
+name: Pull request checks
+
+on:
+  pull_request:
+    branches:
+      - "release"
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Test and package
+    if: github.event.pull_request.draft == false
+    runs-on: macos-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out pull request
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.12.0
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate project metadata
+        run: |
+          node -e 'const p = require("./package.json"); if (!p.main || !p.scripts?.test || !p.devDependencies?.electron || !p.devDependencies?.["electron-builder"]) process.exit(1)'
+          test -f main.js
+          test -f preload.js
+          test -f electron-builder.yml
+          test -f build/entitlements.mac.plist
+
+      - name: Run tests
+        run: npm test
+
+      - name: Verify unsigned macOS packaging
+        run: npm run dist:mac:unsigned
+
+      - name: Upload packaging diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-${{ github.event.pull_request.number }}-packaging-diagnostics
+          path: |
+            release/builder-debug.yml
+            release/builder-effective-config.yaml
+          if-no-files-found: ignore
+          retention-days: 7

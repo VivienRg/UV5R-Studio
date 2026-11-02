@@ -1,0 +1,87 @@
+# Dependencies
+node_modules/
+
+# Electron and electron-builder output
+release/
+dist/
+out/
+build-output/
+*.app
+*.dmg
+*.blockmap
+*.exe
+*.msi
+*.AppImage
+*.deb
+*.rpm
+latest*.yml
+builder-debug.yml
+builder-effective-config.yaml
+
+# Environment files and local credentials
+.env
+.env.*
+!.env.example
+*.p8
+*.p12
+*.pfx
+*.pem
+*.key
+*.cer
+*.crt
+*.mobileprovision
+signing/*private-key*.asc
+
+# Test and coverage output
+coverage/
+.nyc_output/
+dev/e2e.wav
+dev/*.png
+dev/*.json
+
+# Logs and process files
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.pid
+*.pid.lock
+
+# Tool caches and temporary files
+.cache/
+.electron/
+.eslintcache
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Editors
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Local application data accidentally created in the repository
+backups/
+recordings/
+received-images/

@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; media-src 'self' app: blob: mediastream: data:; img-src 'self' app: data: blob:; connect-src 'self' app: https: blob: data:">
+<title>UV5R Studio</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="shell">
+  <nav class="rail" aria-label="Sections">
+    <div class="brand"><span class="brand-mark" aria-hidden="true"></span><span>UV5R Studio</span></div>
+    <button data-view="channels" class="active"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Channels</button>
+    <button data-view="radio"><svg viewBox="0 0 24 24"><rect x="7" y="6" width="10" height="15" rx="2"/><path d="M10 6V2M10 10h4M10 14h4"/></svg>Radio</button>
+    <button data-view="receive"><svg viewBox="0 0 24 24"><path d="M3 12h3l3-7 4 14 3-7h5"/></svg>Receive</button>
+    <button data-view="conv"><svg viewBox="0 0 24 24"><path d="M4 5h16v10H9l-5 4z"/></svg>Conversation</button>
+    <button data-view="morse"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.8"/><path d="M10 12h4"/><circle cx="19" cy="12" r="1.8"/></svg>Morse</button>
+    <button data-view="images"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 16l5-5 4 4 3-3 6 6"/><circle cx="16" cy="9" r="1.5"/></svg>Images</button>
+    <button data-view="scan"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 12l5-5"/></svg>Scan</button>
+    <button data-view="dtmf"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="1.6"/><circle cx="12" cy="6" r="1.6"/><circle cx="18" cy="6" r="1.6"/><circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18" cy="12" r="1.6"/><circle cx="6" cy="18" r="1.6"/><circle cx="12" cy="18" r="1.6"/><circle cx="18" cy="18" r="1.6"/></svg>DTMF</button>
+    <button data-view="log"><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M9 10h6M9 14h6M9 18h4"/></svg>Log</button>
+    <button data-view="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>Settings</button>
+    <div class="rail-foot"><div id="txBadge" class="tx-badge">Receive only</div><div id="railFoot">Audio off</div></div>
+  </nav>
+
+  <main>
+    <header class="faceplate">
+      <div class="lcd" id="lcd" aria-live="polite">
+        <div class="lcd-top"><span id="lcdCh">CH ---</span><span id="lcdFlags"></span></div>
+        <div class="lcd-freq" id="lcdFreq">---.---</div>
+        <div class="lcd-name" id="lcdName">NO RADIO</div>
+      </div>
+      <div class="plate-info">
+        <div class="meter"><span>Input</span><div class="meter-bar"><div id="meterFill"></div><div id="meterSq"></div></div><span id="meterDb">-∞ dB</span></div>
+        <div class="plate-row"><span class="dot" id="dotRadio"></span><span id="radioState">Radio not read yet</span></div>
+        <div class="plate-row"><span class="dot" id="dotAudio"></span><span id="audioState">Receiver idle</span></div>
+        <div class="plate-row"><span class="dot" id="dotTx"></span><span id="txState">Transmit locked</span></div>
+      </div>
+    </header>
+
+    <!-- CHANNELS -->
+    <section class="view active" id="view-channels">
+      <div class="toolbar stack">
+        <div class="group-chips" id="groupChips"></div>
+        <div class="actions">
+        <button id="btnImport">Import CSV</button>
+        <button id="btnExport">Export CSV</button>
+        <button id="btnDefaults">Load Taiwan plan</button>
+        <button id="btnLockTx" title="Disable transmit on every channel outside 144–146 and 430–432 MHz">Lock TX to ham bands</button>
+        </div>
+      </div>
+      <div class="table-wrap"><table class="grid" id="chanTable">
+        <thead><tr><th>Ch</th><th>Name</th><th>RX MHz</th><th>Duplex</th><th>Offset / TX</th><th>Tone</th><th>Hz</th><th>Mode</th><th>Power</th><th>Scan</th><th>TX</th><th>Notes</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <p class="foot-note" id="chanSummary"></p>
+    </section>
+
+    <!-- RADIO -->
+    <section class="view" id="view-radio">
+      <div class="cols">
+        <div class="panel">
+          <h2>Program the radio</h2>
+          <ol class="steps">
+            <li>Plug the programming cable into the computer, then into the radio. Push it in until it clicks twice.</li>
+            <li>Turn the radio on. Volume up a little helps some cables.</li>
+            <li><strong>Read from radio</strong> first. A backup is saved automatically.</li>
+            <li>Edit channels, then <strong>Write to radio</strong>. Settings menus stay as they are; only channels and names are written.</li>
+          </ol>
+          <div class="btn-row">
+            <button class="primary" id="btnRead">Read from radio</button>
+            <button class="primary warn" id="btnWrite">Write to radio</button>
+          </div>
+          <div class="progress"><div id="progFill"></div></div>
+          <p id="progText" class="muted">Ready.</p>
+          <div class="btn-row">
+            <button id="btnSaveImg">Save image file</button>
+            <button id="btnLoadImg">Open image file</button>
+            <button id="btnFolder">Open backups folder</button>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>Session</h2>
+          <dl class="facts">
+            <dt>Port</dt><dd id="fPort">Not chosen</dd>
+            <dt>Ident</dt><dd id="fIdent">—</dd>
+            <dt>Last read</dt><dd id="fRead">—</dd>
+            <dt>Last write</dt><dd id="fWrite">—</dd>
+            <dt>Channels in image</dt><dd id="fCount">—</dd>
+          </dl>
+          <pre class="console" id="radioConsole"></pre>
+          <p class="muted small">Cable not listed? Most UV-5R cables use a CH340 or PL2303 chip and need the maker’s macOS driver.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- RECEIVE -->
+    <section class="view" id="view-receive">
+      <div class="toolbar">
+        <label>Audio input <select id="inDev"></select></label>
+        <button class="primary" id="btnAudio">Start receiver</button>
+        <label>Radio is on <select id="monCh"></select></label>
+        <label class="chk"><input type="checkbox" id="decDTMF" checked> DTMF</label>
+        <label class="chk"><input type="checkbox" id="decAPRS" checked> APRS / packet</label>
+        <label class="chk"><input type="checkbox" id="recClips" checked> Record activity</label>
+      </div>
+      <div class="cols wide-left">
+        <div class="panel tight">
+          <div class="panel-head"><h2>Audio spectrum</h2><span class="muted small">0–6 kHz. AFSK shows as two lines at 1200 and 2200 Hz; DTMF as a pair.</span></div>
+          <canvas id="waterfall" width="900" height="300"></canvas>
+          <label class="slider">Squelch <input type="range" id="sq" min="-70" max="-10" value="-45"><span id="sqVal">-45 dB</span></label>
+        </div>
+        <div class="panel tight">
+          <div class="panel-head"><h2>Decoded</h2><button class="ghost" id="btnClearFeed">Clear</button></div>
+          <ul class="feed" id="feed"><li class="empty">Connect the radio’s speaker jack to your computer’s audio input, then start the receiver. Decodes show here.</li></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONVERSATION -->
+    <section class="view" id="view-conv">
+      <div class="conv">
+        <div class="panel tight conv-main">
+          <div class="panel-head"><h2>Conversation</h2><span class="muted small" id="convStatus">Voice, Morse and packet text in one thread</span></div>
+          <ul class="thread" id="thread"></ul>
+          <div class="composer">
+            <div class="mode-switch" role="radiogroup" aria-label="Send as">
+              <button data-mode="voice" class="on" role="radio" aria-checked="true">Voice</button>
+              <button data-mode="morse" role="radio" aria-checked="false">Morse</button>
+              <button data-mode="packet" role="radio" aria-checked="false">Packet text</button>
+            </div>
+            <input id="pktTo" class="pkt-to" placeholder="To callsign" spellcheck="false" hidden>
+            <textarea id="convText" rows="2" placeholder="Type a message, or hold Speak and talk" spellcheck="true"></textarea>
+            <div class="composer-row">
+              <button id="btnSpeak" class="speak" title="Hold to talk into your computer microphone">Hold to speak</button>
+              <label class="chk"><input type="checkbox" id="convTranslate"> Translate to <span id="convLangName">radio language</span></label>
+              <span class="spacer"></span>
+              <span class="muted small" id="convPreview"></span>
+              <button class="primary tx-btn" id="btnConvSend">Send</button>
+            </div>
+          </div>
+        </div>
+        <div class="panel tight">
+          <h2>How it works</h2>
+          <p class="muted small">Received speech is turned into text on this computer with Whisper, then translated into your language. Morse and packet text are decoded the same way.</p>
+          <p class="muted small">When you send, text can be translated into the radio language first, then spoken with a system voice, keyed as Morse, or sent as a packet message.</p>
+          <dl class="facts small" id="convFacts"></dl>
+          <div class="btn-row"><button id="btnConvClear" class="ghost">Clear thread</button></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MORSE -->
+    <section class="view" id="view-morse">
+      <div class="cols">
+        <div class="panel">
+          <div class="panel-head"><h2>Decoder</h2><span class="muted small" id="cwInfo">Start the receiver to decode</span></div>
+          <div class="cw-out" id="cwOut" aria-live="polite"></div>
+          <div class="btn-row"><button id="btnCwClear">Clear</button><button id="btnCwCopy">Copy text</button><label class="chk"><input type="checkbox" id="cwAuto" checked> Follow tone pitch</label></div>
+        </div>
+        <div class="panel">
+          <h2>Send Morse</h2>
+          <textarea id="cwText" rows="3" placeholder="CQ CQ DE BV2XXX K" spellcheck="false"></textarea>
+          <div class="cw-preview" id="cwPreview"></div>
+          <div class="toolbar plain">
+            <label>Speed <input type="number" id="cwWpm" min="5" max="40" value="18"> wpm</label>
+            <label>Spacing <input type="number" id="cwFwpm" min="5" max="40" value="18"> wpm</label>
+            <label>Pitch <input type="number" id="cwTone" min="400" max="1200" step="10" value="700"> Hz</label>
+          </div>
+          <div class="btn-row"><button id="btnCwListen">Listen here</button><button class="primary tx-btn" id="btnCwSend">Send on radio</button></div>
+          <div class="prosigns" id="prosigns"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- IMAGES -->
+    <section class="view" id="view-images">
+      <div class="cols">
+        <div class="panel">
+          <div class="panel-head"><h2>Receive images</h2><span class="muted small" id="sstvRxInfo">Waiting for an SSTV signal</span></div>
+          <canvas id="sstvRx" width="320" height="256" class="pix"></canvas>
+          <div class="progress"><div id="sstvRxProg"></div></div>
+          <div class="btn-row"><label class="chk"><input type="checkbox" id="sstvOn" checked> Decode SSTV</label><button id="btnSstvStop">Stop and save</button><button id="btnImgFolder">Open images folder</button></div>
+          <h3>Received</h3>
+          <div class="gallery" id="gallery"></div>
+        </div>
+        <div class="panel">
+          <h2>Send an image</h2>
+          <div class="toolbar plain">
+            <label>Mode <select id="sstvMode"></select></label>
+            <input type="file" id="sstvFile" accept="image/*" hidden>
+            <button id="btnSstvPick">Choose image</button>
+            <label class="chk"><input type="checkbox" id="sstvOverlay" checked> Add callsign</label>
+          </div>
+          <canvas id="sstvTx" width="320" height="256" class="pix"></canvas>
+          <p class="muted small" id="sstvTxInfo">Choose an image. It is cropped to fill the frame.</p>
+          <div class="btn-row"><button id="btnSstvListen">Listen here</button><button class="primary tx-btn" id="btnSstvSend">Send on radio</button><button id="btnSstvCancel" class="ghost">Stop</button></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="view" id="view-settings">
+      <div class="settings">
+        <div class="panel">
+          <h2>Certified mode</h2>
+          <p class="muted">Off by default: the app only listens. Certified mode lets it put audio on the radio for voice, Morse, packet, DTMF and images.</p>
+          <dl class="facts" id="certFacts"></dl>
+          <label class="field">Callsign <input id="setCall" placeholder="BV2XXX" spellcheck="false" autocomplete="off"></label>
+          <label class="field">Licence class <select id="setClass"><option value="">Choose</option><option>Class 1</option><option>Class 2</option><option>Class 3</option><option>Foreign / reciprocal</option></select></label>
+          <label class="chk block"><input type="checkbox" id="setAck"> I hold a valid amateur licence for this callsign and will transmit only on frequencies and power it allows.</label>
+          <div class="btn-row"><button class="primary" id="btnCert">Turn on Certified mode</button><button id="btnSigRecheck">Check signature again</button></div>
+          <p class="small" id="certMsg"></p>
+        </div>
+        <div class="panel">
+          <h2>Transmit audio</h2>
+          <label class="field">Output to radio <select id="outDev"></select></label>
+          <label class="field">Wait before sending <span><input type="number" id="dtLead" value="300" min="0" max="3000"> ms</span></label>
+          <label class="field">Level <input type="range" id="setTxLevel" min="5" max="100" value="50"></label>
+          <label class="chk block"><input type="checkbox" id="setIdCw" checked> Send my callsign in Morse after each transmission</label>
+          <h2 class="gap">Language</h2>
+          <label class="field">My language <select id="setMyLang"></select></label>
+          <label class="field">Radio language <select id="setRadioLang"></select></label>
+          <label class="chk block"><input type="checkbox" id="setAutoTr" checked> Translate what I receive into my language</label>
+          <label class="field">Anthropic API key <span class="keyrow"><input id="setKey" type="password" placeholder="sk-ant-…" autocomplete="off"><button id="btnKey">Save</button></span></label>
+          <p class="muted small" id="keyState">Translation uses Claude through your own API key. The key is stored in the macOS keychain.</p>
+          <label class="field">Claude model <input id="setModel" value="claude-haiku-5-5" spellcheck="false"></label>
+        </div>
+        <div class="panel">
+          <h2>Speech</h2>
+          <label class="chk block"><input type="checkbox" id="setStt" checked> Turn received voice into text</label>
+          <label class="field">Recognition model <select id="setSttModel"><option value="Xenova/whisper-base">Whisper base (fast, about 80 MB)</option><option value="Xenova/whisper-small">Whisper small (more accurate, about 250 MB)</option></select></label>
+          <div class="btn-row"><button id="btnSttLoad">Download model now</button></div>
+          <div class="progress"><div id="sttProg"></div></div>
+          <p class="muted small" id="sttState">The model downloads once, then runs on this Mac with no internet.</p>
+          <label class="field">My microphone <select id="setMic"></select></label>
+          <label class="field">Voice for sending <select id="setVoice"><option value="">Match radio language</option></select></label>
+          <label class="field">Speaking rate <span><input type="number" id="setRate" value="170" min="90" max="300"> words/min</span></label>
+          <h2 class="gap">Morse and images</h2>
+          <label class="field">Default image mode <select id="setSstv"></select></label>
+          <p class="muted small">Morse speed and pitch are set on the Morse page and saved automatically.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCAN -->
+    <section class="view" id="view-scan">
+      <div class="cols">
+        <div class="panel">
+          <h2>Scan list</h2>
+          <p class="muted">The UV-5R scans by itself and can’t be tuned from a computer, so scanning works in two parts: choose which channels the radio scans, write them, then let this app log every stop.</p>
+          <div id="scanGroups" class="scan-groups"></div>
+          <div class="btn-row"><button class="primary warn" id="btnScanWrite">Write scan list to radio</button></div>
+          <ol class="steps small">
+            <li>On the radio, switch to channel mode (press VFO/MR).</li>
+            <li>Long-press <kbd>*</kbd> SCAN to start scanning.</li>
+            <li>Start the receiver here. Each stop is logged with a recording.</li>
+          </ol>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2>Activity, last 60 minutes</h2><span class="muted small" id="scanHits">0 stops</span></div>
+          <canvas id="activity" width="700" height="200"></canvas>
+          <ul class="feed short" id="scanFeed"><li class="empty">No activity yet.</li></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- DTMF -->
+    <section class="view" id="view-dtmf">
+      <div class="cols">
+        <div class="panel">
+          <h2>Send tones</h2>
+          <p class="muted">Tones play on the transmit output set in Settings. Feed that into the radio’s mic input and use VOX, or hold PTT while sending.</p>
+          <div class="keypad" id="keypad"></div>
+          <div class="seq-row"><input id="dtmfSeq" placeholder="Sequence, for example *123#" spellcheck="false"><button class="primary" id="btnSendSeq">Send</button></div>
+          <div class="toolbar plain">
+            <label>Tone <input type="number" id="dtOn" value="100" min="40" max="500"> ms</label>
+            <label>Gap <input type="number" id="dtOff" value="60" min="30" max="500"> ms</label>
+          </div>
+          <h3>Saved sequences</h3>
+          <ul class="saved" id="savedSeq"></ul>
+          <div class="seq-row"><input id="seqLabel" placeholder="Label"><button id="btnSaveSeq">Save sequence</button></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2>Heard</h2><span class="muted small">Needs the receiver running</span></div>
+          <div class="dtmf-big" id="dtmfBig">—</div>
+          <ul class="feed short" id="dtmfFeed"><li class="empty">Received digits appear here, grouped per burst.</li></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- LOG -->
+    <section class="view" id="view-log">
+      <div class="toolbar">
+        <div class="group-chips" id="logFilters"></div>
+        <input id="logSearch" placeholder="Search log" spellcheck="false">
+        <div class="spacer"></div>
+        <button id="btnLogExport">Export CSV</button>
+        <button id="btnLogFolder">Open recordings</button>
+        <button id="btnLogClear" class="danger">Clear log</button>
+      </div>
+      <div class="table-wrap"><table class="grid" id="logTable">
+        <thead><tr><th>Time</th><th>Type</th><th>Channel</th><th>Detail</th><th>Length</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+    </section>
+  </main>
+</div>
+
+<dialog id="portDialog">
+  <h2>Choose the programming cable</h2>
+  <ul id="portList"></ul>
+  <div class="btn-row"><button id="portCancel">Cancel</button></div>
+</dialog>
+<div class="toast" id="toast" role="status"></div>
+
+<script src="errtrap.js"></script>
+<script src="channels-default.js"></script>
+<script src="uv5r.js"></script>
+<script src="dsp.js"></script>
+<script src="cw.js"></script>
+<script src="sstv.js"></script>
+<script src="app.js"></script>
+<script src="features.js"></script>
+</body>
+</html>
