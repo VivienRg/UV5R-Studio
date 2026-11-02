@@ -83,7 +83,9 @@ The Electron application and packaging files are all included in the repository:
 ## Features ✨
 
 - **Radio programming** — read and write UV-5R channel memories over a USB programming cable, with automatic backups.
-- **Channel management** — edit memories, import or export CHIRP CSV files, and load the included Taiwan channel plan.
+- **Channel management** — download and upload radio memories, edit channels, import or export CHIRP CSV files, and load the included Taiwan channel plan.
+- **Radio settings** — configure squelch, VOX, backlight, time-out timer, voice prompts, scan resume, dual watch, key lock, beeps, and startup messages.
+- **Safe backups** — automatically save standard CHIRP-compatible images and verify the connected radio before uploading.
 - **Signal decoding** — receive voice-to-text, Morse, DTMF, APRS/AX.25 packet data, and SSTV images.
 - **Conversation view** — combine decoded voice, Morse, and packet text in one thread, with optional translation.
 - **Signal generation** — create voice, Morse, packet, DTMF, and SSTV audio for transmission.
@@ -140,7 +142,7 @@ npm run selftest
 4. Edit or import channels, then select **Write to radio**.
 5. To decode signals, connect the radio's speaker output to the computer, open **Receive**, choose the audio input, and start the receiver.
 
-Only channel memories and names are written to the radio; other radio menu settings are left unchanged.
+Read the connected radio before writing. UV5R Studio verifies the radio identity, preserves unknown model-specific bytes, and writes channel memories, names, and the settings exposed on the Radio page. Blank or unidentified image uploads are blocked.
 
 ## Project structure
 
@@ -320,7 +322,9 @@ Open a [GitHub issue](https://github.com/VivienRg/uv5r-studio/issues) or contact
 
 Release tags follow the version in `package.json` using the `vMAJOR.MINOR.PATCH` format. Signed and notarized artifacts are produced automatically when a matching version tag points to a commit on the `release` branch.
 
-- **1.1.0** — Current development release: radio programming, channel management, multi-mode decoding, conversations, translation, SSTV, Morse, packet, DTMF, and Certified mode.
+- **1.2.0** — Verified UV-5R USB download/upload, CHIRP-compatible image backups, DCS and cross-tone support, identity-checked writes, and editable global radio settings.
+- **1.1.1** — Signed and notarized macOS release workflow fixes.
+- **1.1.0** — Radio programming, channel management, multi-mode decoding, conversations, translation, SSTV, Morse, packet, DTMF, and Certified mode.
 
 See [GitHub Releases](https://github.com/VivienRg/uv5r-studio/releases) for published downloads and release notes.
 

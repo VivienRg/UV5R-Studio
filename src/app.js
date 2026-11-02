@@ -18,7 +18,7 @@ function toast(msg, err) { const t = $('#toast'); t.textContent = msg; t.classNa
 // ---------------- state ----------------
 const S = {
   channels: load('channels') || padChannels(clone(window.DEFAULT_CHANNELS)),
-  image: null, ident: null, port: null,
+  image: null, ident: null, radioSettings: null, port: null,
   log: [], filter: 'all', groupFilter: 'All',
   saved: load('savedSeq') || [{ label: 'Test burst', seq: '123#' }],
   monitor: localStorage.getItem('monitor') || ''
@@ -89,8 +89,8 @@ function row(c, i) {
     el('td', {}, cellInput(c, i, 'rx', 'w-f', 'number')),
     el('td', {}, cellSelect(c, i, 'duplex', [['', 'Simplex'], ['+', '+ shift'], ['-', '− shift'], ['split', 'Split'], ['off', 'TX off']])),
     el('td', {}, c.duplex === '' || c.duplex === 'off' ? el('span', { class: 'muted', text: '—' }) : cellInput(c, i, 'offset', 'w-f', 'number')),
-    el('td', {}, cellSelect(c, i, 'toneMode', [['', 'None'], ['Tone', 'TX tone'], ['TSQL', 'Tone squelch']])),
-    el('td', {}, c.toneMode ? cellInput(c, i, c.toneMode === 'TSQL' ? 'ctone' : 'rtone', 'w-hz', 'number') : el('span', { class: 'muted', text: '—' })),
+    el('td', {}, cellSelect(c, i, 'toneMode', [['', 'None'], ['Tone', 'TX tone'], ['TSQL', 'Tone squelch'], ['DTCS', 'DCS'], ['Cross', 'Cross mode']])),
+    el('td', {}, !c.toneMode ? el('span', { class: 'muted', text: '—' }) : c.toneMode === 'Cross' ? cellSelect(c, i, 'crossMode', [['Tone->Tone','Tone→Tone'],['Tone->DTCS','Tone→DCS'],['DTCS->Tone','DCS→Tone'],['DTCS->DTCS','DCS→DCS'],['Tone->','Tone→'],['DTCS->','DCS→'],['->Tone','→Tone'],['->DTCS','→DCS']]) : cellInput(c, i, c.toneMode === 'TSQL' ? 'ctone' : c.toneMode === 'DTCS' ? 'dcs' : 'rtone', 'w-hz', 'number')),
     el('td', {}, cellSelect(c, i, 'mode', [['FM', 'Wide'], ['NFM', 'Narrow']])),
     el('td', {}, cellSelect(c, i, 'power', [['High', 'High'], ['Low', 'Low']])),
     el('td', {}, el('input', { type: 'checkbox', checked: c.skip !== 'S', 'aria-label': 'scan ch ' + i, onchange: e => setField(i, 'skip', e.target.checked ? '' : 'S') })),
@@ -159,17 +159,30 @@ async function getPort() {
 function progress(p, text) { $('#progFill').style.width = Math.round(p * 100) + '%'; if (text) $('#progText').textContent = text; }
 function busy(on) { ['#btnRead', '#btnWrite', '#btnScanWrite'].forEach(s => $(s).disabled = on); $('#dotRadio').className = 'dot' + (on ? ' busy' : S.image ? ' on' : ''); }
 
+for (let i=0;i<=40;i++) $('#rsTimeout').append(el('option',{value:i,text:i ? `${i*15} seconds` : 'Off'}));
+const settingFields = ['#rsSquelch','#rsVox','#rsBacklight','#rsTimeout','#rsVoice','#rsScan','#rsLine1','#rsLine2','#rsDual','#rsBeep','#rsLock','#rsRoger'];
+function showRadioSettings(s) {
+  S.radioSettings=s; $('#rsSquelch').value=s.squelch; $('#rsVox').value=s.vox; $('#rsBacklight').value=s.backlight; $('#rsTimeout').value=s.timeout; $('#rsVoice').value=s.voice; $('#rsScan').value=s.scanResume; $('#rsLine1').value=s.startup1; $('#rsLine2').value=s.startup2; $('#rsDual').checked=s.dualWatch; $('#rsBeep').checked=s.beep; $('#rsLock').checked=s.autoLock; $('#rsRoger').checked=s.roger;
+}
+function collectRadioSettings() {
+  if (!S.radioSettings) return null;
+  return Object.assign({},S.radioSettings,{squelch:+$('#rsSquelch').value,vox:+$('#rsVox').value,backlight:+$('#rsBacklight').value,timeout:+$('#rsTimeout').value,voice:+$('#rsVoice').value,scanResume:+$('#rsScan').value,startup1:$('#rsLine1').value,startup2:$('#rsLine2').value,dualWatch:$('#rsDual').checked,beep:$('#rsBeep').checked,autoLock:$('#rsLock').checked,roger:$('#rsRoger').checked});
+}
+settingFields.forEach(q => $(q).disabled=true);
+
 $('#btnRead').onclick = async () => {
   try {
     const port = await getPort(); busy(true); progress(0, 'Talking to the radio…'); rlog('Handshake');
-    const { img, ident } = await UV5R.download(port, p => progress(p, `Reading ${Math.round(p * 100)}%`), rlog);
+    const { img, ident, firmware } = await UV5R.download(port, p => progress(p, `Reading ${Math.round(p * 100)}%`), rlog);
     S.image = img; S.ident = ident;
+    showRadioSettings(UV5R.decodeSettings(img)); settingFields.forEach(q => $(q).disabled=false);
     const byKey = new Map(window.DEFAULT_CHANNELS.map(c => [c.name + '|' + (+c.rx).toFixed(5), c.comment]));
     S.channels = UV5R.decodeAll(img).map(c => c && Object.assign(c, { comment: byKey.get(c.name + '|' + (+c.rx).toFixed(5)) || '' }));
     persist(); renderAllChannels();
-    const withId = new Uint8Array(8 + img.length); withId.set(ident.slice(0, 8)); withId.set(img, 8);
+    const withId = UV5R.toChirpImage(img, ident);
     const bk = await api.autoBackup(withId);
     $('#fIdent').textContent = ident.map(v => v.toString(16).padStart(2, '0')).join(' ').toUpperCase();
+    $('#fFirmware').textContent = firmware || 'Unknown';
     $('#fRead').textContent = fmtDate(Date.now());
     $('#fCount').textContent = S.channels.filter(Boolean).length;
     $('#radioState').textContent = 'Image read ' + fmtTime(Date.now());
@@ -186,11 +199,11 @@ async function writeRadio(label) {
   const bad = used.filter(c => !rxOk(+c.rx)); if (bad.length) throw new Error(`${bad[0].name} is outside the radio's range (136–174, 400–520 MHz).`);
   const illegal = used.filter(c => txClass(c)[0] === 'illegal');
   if (illegal.length && !confirm(`${illegal.length} channels can transmit outside Taiwan ham bands (for example ${illegal[0].name}). Write anyway? Use "Lock TX to ham bands" to fix.`)) return false;
-  if (!S.image && !confirm('This radio has not been read yet. Write channels onto a blank image? Radio settings are not touched either way, but reading first keeps per-channel extras such as PTT-ID.')) return false;
-  const base = S.image || UV5R.emptyImage();
-  const img = UV5R.encodeAll(base, S.channels);
+  if (!S.image || !S.ident) throw new Error('Read this radio first. Uploading a blank or unidentified image is blocked for safety.');
+  let img = UV5R.encodeAll(S.image, S.channels);
+  const settings = collectRadioSettings(); if (settings) img = UV5R.encodeSettings(img, settings);
   const port = await getPort(); busy(true); progress(0, 'Talking to the radio…'); rlog('Handshake for write');
-  await UV5R.upload(port, img, p => progress(p, `Writing ${Math.round(p * 100)}%`), rlog);
+  await UV5R.upload(port, img, p => progress(p, `Writing ${Math.round(p * 100)}%`), rlog, S.ident);
   S.image = img; $('#fWrite').textContent = fmtDate(Date.now());
   progress(1, 'Write complete. The radio restarts by itself.'); rlog(label);
   addLog({ type: 'radio', detail: label }); toast(label); return true;
@@ -198,16 +211,17 @@ async function writeRadio(label) {
 $('#btnWrite').onclick = async () => { try { await writeRadio(`Wrote ${S.channels.filter(Boolean).length} channels to radio`); } catch (e) { fail(e); } finally { busy(false); } };
 $('#btnSaveImg').onclick = async () => {
   if (!S.image) return toast('Read the radio or open an image first', true);
-  const d = new Uint8Array(8 + S.image.length); if (S.ident) d.set(S.ident.slice(0, 8)); d.set(S.image, 8);
+  const d = UV5R.toChirpImage(S.image, S.ident);
   const p = await api.saveBinary('uv5r.img', d, [{ name: 'Radio image', extensions: ['img'] }]); if (p) toast('Saved ' + p);
 };
 $('#btnLoadImg').onclick = async () => {
   const f = await api.openBinary([{ name: 'Radio image', extensions: ['img'] }]); if (!f) return;
-  const d = new Uint8Array(f.data);
-  let img = d.length === 0x2000 ? d : d.length >= 0x2008 ? d.slice(8, 0x2008) : null;
-  if (!img) return toast('That file is not a UV-5R image', true);
-  S.image = img; S.ident = d.length >= 0x2008 ? Array.from(d.slice(0, 8)) : null;
+  let parsed; try { parsed=UV5R.fromImage(new Uint8Array(f.data)); } catch(e) { return toast(e.message,true); }
+  const {img,id}=parsed; S.image = img; S.ident = id;
+  showRadioSettings(UV5R.decodeSettings(img)); settingFields.forEach(q => $(q).disabled=false);
   S.channels = UV5R.decodeAll(img); persist(); renderAllChannels();
+  $('#fIdent').textContent = id ? id.map(v => v.toString(16).padStart(2, '0')).join(' ').toUpperCase() : 'Not present — read radio before writing';
+  $('#fFirmware').textContent = Array.from(img.subarray(0x1EF0,0x1EFE)).filter(v => v !== 0xFF && v !== 0).map(v => String.fromCharCode(v)).join('') || 'Unknown';
   $('#fCount').textContent = S.channels.filter(Boolean).length; toast('Opened ' + f.path.split(/[\\/]/).pop());
 };
 $('#btnFolder').onclick = () => api.openDataFolder();

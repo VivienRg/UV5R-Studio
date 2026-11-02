@@ -65,7 +65,7 @@
             <li>Plug the programming cable into the computer, then into the radio. Push it in until it clicks twice.</li>
             <li>Turn the radio on. Volume up a little helps some cables.</li>
             <li><strong>Read from radio</strong> first. A backup is saved automatically.</li>
-            <li>Edit channels, then <strong>Write to radio</strong>. Settings menus stay as they are; only channels and names are written.</li>
+            <li>Edit channels and radio settings, then <strong>Write to radio</strong>. The app verifies the radio identity before uploading.</li>
           </ol>
           <div class="btn-row">
             <button class="primary" id="btnRead">Read from radio</button>
@@ -84,12 +84,32 @@
           <dl class="facts">
             <dt>Port</dt><dd id="fPort">Not chosen</dd>
             <dt>Ident</dt><dd id="fIdent">—</dd>
+            <dt>Firmware</dt><dd id="fFirmware">—</dd>
             <dt>Last read</dt><dd id="fRead">—</dd>
             <dt>Last write</dt><dd id="fWrite">—</dd>
             <dt>Channels in image</dt><dd id="fCount">—</dd>
           </dl>
           <pre class="console" id="radioConsole"></pre>
           <p class="muted small">Cable not listed? Most UV-5R cables use a CH340 or PL2303 chip and need the maker’s macOS driver.</p>
+        </div>
+        <div class="panel" style="grid-column:1/-1">
+          <h2>Radio settings</h2>
+          <div class="cols">
+            <div>
+              <label class="field">Squelch (0–9)<input id="rsSquelch" type="number" min="0" max="9"></label>
+              <label class="field">VOX (0 is off)<input id="rsVox" type="number" min="0" max="10"></label>
+              <label class="field">Backlight seconds<input id="rsBacklight" type="number" min="0" max="10"></label>
+              <label class="field">Time-out timer<select id="rsTimeout"></select></label>
+            </div>
+            <div>
+              <label class="field">Voice prompts<select id="rsVoice"><option value="0">Off</option><option value="1">English</option><option value="2">Chinese</option></select></label>
+              <label class="field">Scan resume<select id="rsScan"><option value="0">Time</option><option value="1">Carrier</option><option value="2">Search</option></select></label>
+              <label class="field">Startup line 1<input id="rsLine1" maxlength="7"></label>
+              <label class="field">Startup line 2<input id="rsLine2" maxlength="7"></label>
+            </div>
+          </div>
+          <div class="btn-row"><label class="chk"><input id="rsDual" type="checkbox"> Dual watch</label><label class="chk"><input id="rsBeep" type="checkbox"> Key beep</label><label class="chk"><input id="rsLock" type="checkbox"> Auto key lock</label><label class="chk"><input id="rsRoger" type="checkbox"> Roger beep</label></div>
+          <p class="muted small">Unknown model-specific bytes are preserved from the downloaded image. Read this radio before changing settings.</p>
         </div>
       </div>
     </section>
