@@ -8,10 +8,12 @@ macOS release builds require a Developer ID Application `.p12` certificate plus 
 
 - `MAC_CSC_LINK` — base64-encoded `.p12` for GitHub Actions.
 - `MAC_CSC_KEY_PASSWORD` — export password for the `.p12`.
-- `APPLE_API_KEY` — base64-encoded `.p8` in GitHub Actions or an absolute `.p8` path locally.
+- `APPLE_API_KEY` — base64-encoded `.p8` in GitHub Actions. The workflow decodes it to a temporary file because electron-builder requires a filesystem path. Use an absolute `.p8` path locally.
 - `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`, and `APPLE_TEAM_ID`.
 - `APPLE_ID` and `APPLE_APP_SPECIFIC_PASSWORD` as fallback authentication.
 - Repository variable `APP_BUNDLE_ID=com.uv5r-studio.app`.
+
+The release workflow fails before packaging unless one complete notarization credential set is present. After packaging it verifies the code signature, stapled notarization ticket, and Gatekeeper assessment for both architectures before uploading any macOS artifacts.
 
 ## Windows self-signed certificate
 
