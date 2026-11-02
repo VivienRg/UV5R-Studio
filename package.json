@@ -16,11 +16,11 @@
     "test": "node test/run.js && node test/radio-sim.js && node test/cw-test.js && node test/sstv-test.js",
     "selftest": "node dev/make-test-wav.js && UV5R_E2E=dev UV5R_E2E_MS=64000 electron . --use-fake-device-for-media-stream --use-fake-ui-for-media-stream --use-file-for-fake-audio-capture=dev/e2e.wav%noloop",
     "vendor": "node dev/update-vendor.js",
-    "dist:mac": "electron-builder --mac --arm64 --x64",
-    "dist:mac:arm64": "electron-builder --mac --arm64",
-    "dist:mac:unsigned": "CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac --arm64 -c.mac.notarize=false",
-    "dist:win": "electron-builder --win --x64",
-    "dist:linux": "electron-builder --linux --x64"
+    "dist:mac": "electron-builder --mac --arm64 --x64 --publish never",
+    "dist:mac:arm64": "electron-builder --mac --arm64 --publish never",
+    "dist:mac:unsigned": "CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac --arm64 --publish never -c.mac.notarize=false",
+    "dist:win": "electron-builder --win --x64 --publish never",
+    "dist:linux": "electron-builder --linux --x64 --publish never"
   },
   "devDependencies": {
     "electron": "44.8.0",

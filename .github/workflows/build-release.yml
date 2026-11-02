@@ -62,7 +62,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Build, sign, and notarize
-        run: npm run dist:mac -- -p never -c.forceCodeSigning=true -c.appId="${APP_BUNDLE_ID:-com.uv5r-studio.app}"
+        run: npm run dist:mac -- -c.forceCodeSigning=true -c.appId="${APP_BUNDLE_ID:-com.uv5r-studio.app}"
         env:
           APP_BUNDLE_ID: ${{ vars.APP_BUNDLE_ID }}
           CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
@@ -95,7 +95,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Build self-signed Windows installer
-        run: npm run dist:win -- -p never -c.forceCodeSigning=true
+        run: npm run dist:win -- -c.forceCodeSigning=true
         env:
           WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
@@ -121,7 +121,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Build AppImage and Debian package
-        run: npm run dist:linux -- -p never
+        run: npm run dist:linux
       - uses: actions/upload-artifact@v4
         with:
           name: UV5R-Studio-Linux-${{ github.ref_name }}
