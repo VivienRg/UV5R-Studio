@@ -181,7 +181,7 @@ TRANSFORMERS_VERSION=3.8.1 npm run vendor
 
 ### GitHub Actions
 
-The [`build-release.yml`](.github/workflows/build-release.yml) workflow tests the project and builds macOS, Windows, and Linux releases using [`electron-builder.yml`](electron-builder.yml). macOS artifacts are signed and notarized, the Windows installer is self-signed, and Linux is published as AppImage and Debian packages. It runs only for pushes to the `release` branch and version tags matching `v*.*.*`. A tag build must exactly match the version in `package.json`—for example, version `1.1.0` requires tag `v1.1.0`—and the tagged commit must belong to the `release` branch. Successful tag builds are attached to a GitHub Release.
+The [`build-release.yml`](.github/workflows/build-release.yml) workflow tests the project and builds macOS, Windows, and Linux releases using [`electron-builder.yml`](electron-builder.yml). macOS artifacts are signed and notarized, the Windows installer is self-signed, and Linux is published as AppImage and Debian packages. It runs only for version tags matching `v*.*.*`. A tag build must exactly match the version in `package.json`—for example, version `1.1.0` requires tag `v1.1.0`—and the tagged commit must belong to the `release` branch. Successful tag builds are attached to a GitHub Release.
 
 Configure these repository secrets under **Settings → Secrets and variables → Actions**:
 
@@ -206,20 +206,17 @@ Add the `.p8` file directly from your machine with the GitHub CLI:
 base64 < /absolute/path/to/AuthKey_XXXXXXXXXX.p8 | tr -d '\n' | gh secret set APPLE_API_KEY
 gh secret set APPLE_API_KEY_ID
 gh secret set APPLE_API_ISSUER
-gh secret set APPLE_TEAM_ID
-gh secret set APPLE_ID
-gh secret set APPLE_APP_SPECIFIC_PASSWORD
 gh variable set APP_BUNDLE_ID --body 'com.uv5r-studio.app'
 ```
 
-Commands without piped values prompt securely for their values. Export the **Developer ID Application** certificate and its private key from Keychain Access as a password-protected `.p12`, then add it in the same way:
+The API key triple is the recommended notarization method. Alternatively, configure the Apple ID fallback with `gh secret set APPLE_ID`, `gh secret set APPLE_APP_SPECIFIC_PASSWORD`, and `gh secret set APPLE_TEAM_ID`. Commands without piped values prompt securely for their values. Export the **Developer ID Application** certificate and its private key from Keychain Access as a password-protected `.p12`, then add it in the same way:
 
 ```bash
 base64 < /absolute/path/to/DeveloperIDApplication.p12 | tr -d '\n' | gh secret set MAC_CSC_LINK
 gh secret set MAC_CSC_KEY_PASSWORD
 ```
 
-The workflow passes the encoded `.p8` value directly to electron-builder, which supports base64-encoded API keys in CI. Neither private file is written to the repository. Secrets are deliberately not used in pull-request workflows, where secrets from forked repositories are unavailable.
+The workflow decodes the `.p8` into a temporary runner file and passes that path to electron-builder. Neither private file is written to the repository. Secrets are deliberately not used in pull-request workflows, where secrets from forked repositories are unavailable.
 
 ### macOS signing and notarization
 
