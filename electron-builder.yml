@@ -62,7 +62,8 @@ dmg:
 
 win:
   icon: "build/icon.png"
-  publisherName: "UV5R Studio Community"
+  signtoolOptions:
+    publisherName: "UV5R Studio Community"
   target:
     - target: "nsis"
       arch:
